@@ -76,6 +76,12 @@ def r2_get_imagebase():
 def r2_get_idp_name():
   return "fuck"
 
+def decompile(ea):
+  return r2.cmd("pdc @ %s"%(ea))
+
+def get_func(ea):
+  return {}
+
 def GetInstructionList():
   # wtf
   return []
@@ -85,8 +91,7 @@ def Heads(startEA, endEA):
   return []
 
 def SegStart(ea):
-  # TODO: wat to return here? all the bbs?
-  return ea # XXX
+  return int(r2.cmd("S.~[0]"), 16)
 
 def GetFunctionFlags(fcn):
   # TODO: wat to return here? all the bbs?
@@ -105,6 +110,9 @@ def GetFunctionCmt(ea, type):
 def GetType(ea):
   # TODO: wat to return here? all the bbs?
   return None
+
+def GetManyBytes(ea):
+  return [] # XXX
 
 def GetInputFileMD5():
   return "md5here"
@@ -972,12 +980,11 @@ class CIDABinDiff(diaphora.CBinDiff):
       traceback.print_exc()
 
   def decompile_and_get(self, ea):
-    print "DECOMPILE HERE"
-    decompiler_plugin = os.getenv("DIAPHORA_DECOMPILER_PLUGIN")
-    if decompiler_plugin is None:
-      decompiler_plugin = "hexrays"
-    if not init_hexrays_plugin() and not (load_plugin(decompiler_plugin) and init_hexrays_plugin()):
-      return False
+    #decompiler_plugin = os.getenv("DIAPHORA_DECOMPILER_PLUGIN")
+    #if decompiler_plugin is None:
+    #  decompiler_plugin = "hexrays"
+    #if not init_hexrays_plugin() and not (load_plugin(decompiler_plugin) and init_hexrays_plugin()):
+    #  return False
 
     f = get_func(ea)
     if f is None:
@@ -990,7 +997,7 @@ class CIDABinDiff(diaphora.CBinDiff):
 
     self.pseudo_hash[ea] = 0 #visitor.primes_hash
 
-    sv = cfunc.get_pseudocode();
+    sv = cfunc # cfunc.get_pseudocode();
     self.pseudo[ea] = []
     first_line = None
     for sline in sv:
@@ -1323,7 +1330,7 @@ or selecting Edit -> Plugins -> Diaphora - Show results""")
       try:
         asm.extend(assembly[key])
       except:
-        print "exception"
+        print sys.exc_info()[0].message
         pass
     asm = "\n".join(asm)
 
