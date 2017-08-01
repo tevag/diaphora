@@ -59,33 +59,83 @@ or instructions' option."""
 #-----------------------------------------------------------------------
 
 BADADDR = 0xFFFFFFFFFFFFFFFF
+r2 = None
 
 def GetMaxLocalType():
   return 0
 
+def CodeRefsTo(x, y):
+  print "XREF"
+  return []
+
 def r2_get_imagebase():
-  return 0
+  ep = ((int(r2.cmd("ieq"), 16) >> 24 ) << 24)
+  print "IMAGE BASE %s"%ep
+  return ep
 
 def r2_get_idp_name():
   return "fuck"
+
+def GetInstructionList():
+  # wtf
+  return []
+
+def Heads(startEA, endEA):
+  # TODO: wat to return here? all the bbs?
+  return []
+
+def SegStart(ea):
+  # TODO: wat to return here? all the bbs?
+  return ea # XXX
+
+def GetFunctionFlags(fcn):
+  # TODO: wat to return here? all the bbs?
+  return -1 # FUNC_LIB
+  #  flags = GetFunctionFlags(f)
+  #  if flags & FUNC_LIB or flags & FUNC_THUNK or flags == -1:
+
+def GuessType(ea):
+  # TODO: wat to return here? all the bbs?
+  return None
+
+def GetFunctionCmt(ea, type):
+  # TODO: wat to return here? all the bbs?
+  return r2.cmd("CCf")
+
+def GetType(ea):
+  # TODO: wat to return here? all the bbs?
+  return None
 
 def GetInputFileMD5():
   return "md5here"
 
 def MinEA():
+  print "MINEA CALLED"
   return 0
 
 def MaxEA():
+  print "MAXEA CALLED"
   return 0x80000
 
 def askyn_c(a, b):
   return
 
-def Functions():
-  return []
+def Functions(min=0, max=0):
+  print "LIST OF FUNCTION"
+  fcns = r2.cmdj("aflj")
+  ret = []
+  for fcn in fcns:
+    print(fcn['name'])
+    ret.append(fcn['offset'])
+  return ret
 
 def Names():
-  return []
+  # XXX what should i return here?
+  fcns = r2.cmdj("aflj")
+  ret = []
+  for fcn in fcns:
+    ret.append(fcn['name'])
+  return ret
 
 def log(msg):
   print("[%s] %s\n" % (time.asctime(), msg))
@@ -375,7 +425,7 @@ class CDiffGraphViewer():
 class CIDABinDiff(diaphora.CBinDiff):
   def __init__(self, db_name):
     diaphora.CBinDiff.__init__(self, db_name) #, chooser=CIDAChooser)
-    self.names = dict(Names())
+    self.names = [] # TODO dict(Names())
     self.min_ea = MinEA()
     self.max_ea = MaxEA()
 
@@ -406,12 +456,13 @@ class CIDABinDiff(diaphora.CBinDiff):
     i = 0
     callgraph_primes = 1
     callgraph_all_primes = {}
-    func_list = [] # TODO list(Functions(self.min_ea, self.max_ea))
+    func_list = list(Functions(self.min_ea, self.max_ea))
     total_funcs = len(func_list)
     t = time.time()
 
     self.db.execute("PRAGMA synchronous = OFF")
     self.db.execute("BEGIN transaction")
+    print "FUNC LISTING IS %s"%(func_list)
     for func in func_list:
       i += 1
       if (total_funcs > 100) and i % (total_funcs/100) == 0 or i == 1:
@@ -921,6 +972,7 @@ class CIDABinDiff(diaphora.CBinDiff):
       traceback.print_exc()
 
   def decompile_and_get(self, ea):
+    print "DECOMPILE HERE"
     decompiler_plugin = os.getenv("DIAPHORA_DECOMPILER_PLUGIN")
     if decompiler_plugin is None:
       decompiler_plugin = "hexrays"
@@ -954,9 +1006,7 @@ class CIDABinDiff(diaphora.CBinDiff):
 
   def guess_type(self, ea):
     t = GuessType(ea)
-    if not self.use_decompiler_always:
-      return t
-    else:
+    if self.use_decompiler_always:
       try:
         ret = self.decompile_and_get(ea)
         if ret:
@@ -1083,16 +1133,19 @@ or selecting Edit -> Plugins -> Diaphora - Show results""")
     cpu_ins_list.sort()
 
     image_base = self.get_base_address()
+    print "FLOW %s"%(flow)
     for block in flow:
       nodes += 1
+      block_startEA = +block['addr'];
+      block_endEA = +block['addr'] + +block['size'];
       instructions_data = []
 
-      block_ea = block.startEA - image_base
+      block_ea = block_startEA - image_base
       idx = len(bb_topological)
       bb_topological[idx] = []
       bb_topo_num[block_ea] = idx
 
-      for x in list(Heads(block.startEA, block.endEA)):
+      for x in list(Heads(block_startEA, block_endEA)):
         mnem = GetMnem(x)
         disasm = GetDisasm(x)
         size += ItemSize(x)
@@ -1197,7 +1250,7 @@ or selecting Edit -> Plugins -> Diaphora - Show results""")
         # bb in degree, out degree
         bb_degree[block_ea] = [0, 0]
         
-      for succ_block in block.succs():
+      for succ_block in []: # TODO block.succs():
         succ_base = succ_block.startEA - image_base
         bb_relations[block_ea].append(succ_base)
         bb_degree[block_ea][1] += 1
@@ -1211,7 +1264,7 @@ or selecting Edit -> Plugins -> Diaphora - Show results""")
         if not dones.has_key(succ_block.id):
           dones[succ_block] = 1
 
-      for pred_block in block.preds():
+      for pred_block in []: # TODO block.preds():
         try:
           bb_relations[pred_block.startEA - image_base].append(block.startEA - image_base)
         except KeyError:
@@ -1223,9 +1276,9 @@ or selecting Edit -> Plugins -> Diaphora - Show results""")
           dones[succ_block] = 1
 
     for block in flow:
-      block_ea = block.startEA - image_base
-      for succ_block in block.succs():
-        succ_base = succ_block.startEA - image_base
+      block_ea = block_startEA - image_base
+      for succ_block in []: ## TODO block.succs():
+        succ_base = succ_block_startEA - image_base
         bb_topological[bb_topo_num[block_ea]].append(bb_topo_num[succ_base])
 
     strongly_connected_spp = 0
@@ -1261,10 +1314,17 @@ or selecting Edit -> Plugins -> Diaphora - Show results""")
     # After sorting our the addresses of basic blocks, be sure that the
     # very first address is always the entry point, no matter at what
     # address it is.
-    keys.remove(f - image_base)
+    try:
+      keys.remove(f - image_base)
+    except:
+      pass
     keys.insert(0, f - image_base)
     for key in keys:
-      asm.extend(assembly[key])
+      try:
+        asm.extend(assembly[key])
+      except:
+        print "exception"
+        pass
     asm = "\n".join(asm)
 
     cc = edges - nodes + 2
@@ -1327,6 +1387,7 @@ or selecting Edit -> Plugins -> Diaphora - Show results""")
       md_index = sum((1 / emb_t.sqrt() for emb_t in emb_tuples))
       md_index = str(md_index)
 
+    x = f
     seg_rva = x - SegStart(x)
 
     rva = f - self.get_base_address()
@@ -1515,7 +1576,7 @@ or selecting Edit -> Plugins -> Diaphora - Show results""")
 def _diff_or_export(use_ui, **options):
   global g_bindiff
 
-  total_functions = len([]) # TODO list(Functions()))
+  total_functions = len(list(Functions()))
   if False:
     Warning("No IDA database opened or no function in the database.\nPlease open an IDA database and create some functions before running this script.")
     return
@@ -1548,9 +1609,10 @@ def _diff_or_export(use_ui, **options):
       remove_file(opts.file_out)
       log("Database %s removed" % repr(opts.file_out))
 
+  bd = None
   try:
     bd = CIDABinDiff(opts.file_out)
-    bd.use_decompiler_always = opts.use_decompiler
+    bd.use_decompiler_always = True #opts.use_decompiler
     bd.exclude_library_thunk = opts.exclude_library_thunk
     bd.unreliable = opts.unreliable
     bd.slow_heuristics = opts.slow
@@ -1746,24 +1808,31 @@ def remove_file(filename):
 
 #-----------------------------------------------------------------------
 def main():
-  r2 = r2pipe.open()
-
+  global r2
+  filename = os.getenv("R2_FILE")
+  if filename is None:
+    filename = sys.argv[1]
+  if os.getenv("R2PIPE_IN") is not None:
+    r2 = r2pipe.open()
+  else:
+    r2 = r2pipe.open(filename)
+  print (r2.cmd("o"))
+  # perform analysis
+  r2.cmd("aaa")
+  file_out = "output.sqlite"
   if bool(os.getenv("DIAPHORA_AUTO")):
     file_out = os.getenv("DIAPHORA_EXPORT_FILE")
     if file_out is None:
       raise Exception("No export file specified!")
-
-    if os.path.exists(file_out):
-      g_bindiff = None
-      remove_file(file_out)
-
-    bd = CIDABinDiff(file_out)
+  if os.path.exists(file_out):
+    g_bindiff = None
+    remove_file(file_out)
+    #bd = CIDABinDiff(file_out)
     bd.use_decompiler_always = bool(os.getenv("DIAPHORA_USE_DECOMPILER"))
-    bd.export()
-
-    r2.quit()
+    #bd.export()
   else:
     _diff_or_export(True)
+  r2.quit()
 
 if __name__ == "__main__":
   main()
