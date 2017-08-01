@@ -18,6 +18,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import os
 import sys
+import re
 import time
 import json
 import decimal
@@ -56,8 +57,38 @@ You can disable it by un-checking the 'Do not export basic blocks<br>
 or instructions' option."""
 
 #-----------------------------------------------------------------------
+
+BADADDR = 0xFFFFFFFFFFFFFFFF
+
+def GetMaxLocalType():
+  return 0
+
+def r2_get_imagebase():
+  return 0
+
+def r2_get_idp_name():
+  return "fuck"
+
+def GetInputFileMD5():
+  return "md5here"
+
+def MinEA():
+  return 0
+
+def MaxEA():
+  return 0x80000
+
+def askyn_c(a, b):
+  return
+
+def Functions():
+  return []
+
+def Names():
+  return []
+
 def log(msg):
-  Message("[%s] %s\n" % (time.asctime(), msg))
+  print("[%s] %s\n" % (time.asctime(), msg))
 
 #-----------------------------------------------------------------------
 def show_wait_box(msg, show=False):
@@ -110,7 +141,7 @@ def import_definitions():
 
 
 #-----------------------------------------------------------------------
-class CIDAChooser(diaphora.CChooser, Choose2):
+class CIDAChooser(diaphora.CChooser):
 
   def __init__(self, title, bindiff, show_commands=True):
     diaphora.CChooser.__init__(self, title, bindiff, show_commands)
@@ -250,95 +281,12 @@ class CIDAChooser(diaphora.CChooser, Choose2):
     return [0xFFFFFF, 0]
 
 #-----------------------------------------------------------------------
-class CBinDiffExporterSetup(Form):
-  def __init__(self):
-    s = r"""Diaphora BinDiff
-  Please select the path to the SQLite database to save the current IDA database and the path of the SQLite database to diff against.
-  If no SQLite diff database is selected, it will just export the current IDA database to SQLite format. Leave the 2nd field empty if you are
-  exporting the first database.
-
-  SQLite databases:                                                                                                                    Export filter limits:  
-  <#Select a file to export the current IDA database to SQLite format#Export IDA database to SQLite  :{iFileSave}> <#Minimum address to find functions to export#From address:{iMinEA}>
-  <#Select the SQLite database to diff against                       #SQLite database to diff against:{iFileOpen}> <#Maximum address to find functions to export#To address  :{iMaxEA}>
-
-  <Use the decompiler if available:{rUseDecompiler}>
-  <Do not export library and thunk functions:{rExcludeLibraryThunk}>
-  <#Enable if you want neither sub_* functions nor library functions to be exported#Export only non-IDA generated functions:{rNonIdaSubs}>
-  <#Export only function summaries, not all instructions. Showing differences in a graph between functions will not be available.#Do not export instructions and basic blocks:{rFuncSummariesOnly}>
-  <Use probably unreliable methods:{rUnreliable}>
-  <Recommended to disable with databases with more than 5.000 functions#Use slow heuristics:{rSlowHeuristics}>
-  <#Enable this option if you aren't interested in small changes#Relaxed calculations of differences ratios:{rRelaxRatio}>
-  <Use experimental heuristics:{rExperimental}>
-  <#Enable this option to ignore sub_* names for the 'Same name' heuristic.#Ignore automatically generated names:{rIgnoreSubNames}>
-  <#Enable this option to ignore all function names for the 'Same name' heuristic.#Ignore all function names:{rIgnoreAllNames}>
-  <#Enable this option to ignore thunk functions, nullsubs, etc....#Ignore small functions:{rIgnoreSmallFunctions}>{cGroup1}>
-
-  NOTE: Don't select IDA database files (.IDB, .I64) as only SQLite databases are considered.
-"""
-    args = {'iFileSave': Form.FileInput(save=True, swidth=40),
-            'iFileOpen': Form.FileInput(open=True, swidth=40),
-            'iMinEA': Form.NumericInput(tp=Form.FT_HEX, swidth=22),
-            'iMaxEA': Form.NumericInput(tp=Form.FT_HEX, swidth=22),
-            'cGroup1'  : Form.ChkGroupControl(("rUseDecompiler",
-                                               "rExcludeLibraryThunk",
-                                               "rUnreliable",
-                                               "rNonIdaSubs",
-                                               "rSlowHeuristics",
-                                               "rRelaxRatio",
-                                               "rExperimental",
-                                               "rFuncSummariesOnly",
-                                               "rIgnoreSubNames",
-                                               "rIgnoreAllNames",
-                                               "rIgnoreSmallFunctions"))}
-    Form.__init__(self, s, args)
-
-  def set_options(self, opts):
-    if opts.file_out is not None:
-      self.iFileSave.value = opts.file_out
-    if opts.file_in is not None:
-      self.iFileOpen.value = opts.file_in
-
-    self.rUseDecompiler.checked = opts.use_decompiler
-    self.rExcludeLibraryThunk.checked = opts.exclude_library_thunk
-    self.rUnreliable.checked = opts.unreliable
-    self.rSlowHeuristics.checked = opts.slow
-    self.rRelaxRatio.checked = opts.relax
-    self.rExperimental.checked = opts.experimental
-    self.iMinEA.value = opts.min_ea
-    self.iMaxEA.value = opts.max_ea
-    self.rNonIdaSubs.checked = opts.ida_subs == False
-    self.rIgnoreSubNames.checked = opts.ignore_sub_names
-    self.rIgnoreAllNames.checked = opts.ignore_all_names
-    self.rIgnoreSmallFunctions.checked = opts.ignore_small_functions
-    self.rFuncSummariesOnly.checked = opts.func_summaries_only
-
-  def get_options(self):
-    opts = dict(
-      file_out = self.iFileSave.value,
-      file_in  = self.iFileOpen.value,
-      use_decompiler = self.rUseDecompiler.checked,
-      exclude_library_thunk = self.rExcludeLibraryThunk.checked,
-      unreliable = self.rUnreliable.checked,
-      slow = self.rSlowHeuristics.checked,
-      relax = self.rRelaxRatio.checked,
-      experimental = self.rExperimental.checked,
-      min_ea = self.iMinEA.value,
-      max_ea = self.iMaxEA.value,
-      ida_subs = self.rNonIdaSubs.checked == False,
-      ignore_sub_names = self.rIgnoreSubNames.checked,
-      ignore_all_names = self.rIgnoreAllNames.checked,
-      ignore_small_functions = self.rIgnoreSmallFunctions.checked,
-      func_summaries_only = self.rFuncSummariesOnly.checked
-    )
-    return BinDiffOptions(**opts)
-
-#-----------------------------------------------------------------------
 class timeraction_t(object):
   def __init__(self, func, args, interval):
     self.func = func
     self.args = args
     self.interval = interval
-    self.obj = idaapi.register_timer(self.interval, self)
+    self.obj = None # idaapi.register_timer(self.interval, self)
     if self.obj is None:
       raise RuntimeError, "Failed to register timer"
 
@@ -353,7 +301,7 @@ class timeraction_t(object):
 class uitimercallback_t(object):
   def __init__(self, g, interval):
     self.interval = interval
-    self.obj = idaapi.register_timer(self.interval, self)
+    self.obj = None # idaapi.register_timer(self.interval, self)
     if self.obj is None:
       raise RuntimeError, "Failed to register timer"
     self.g = g
@@ -369,7 +317,7 @@ class uitimercallback_t(object):
     return -1
 
 #-----------------------------------------------------------------------
-class CDiffGraphViewer(GraphViewer):
+class CDiffGraphViewer():
   def __init__(self, title, g, colours):
     try:
       GraphViewer.__init__(self, title, False)
@@ -422,41 +370,6 @@ class CDiffGraphViewer(GraphViewer):
   def Show(self):
     return GraphViewer.Show(self)
 
-#-----------------------------------------------------------------------
-class CIdaMenuHandlerShowChoosers(idaapi.action_handler_t):
-  def __init__(self):
-    idaapi.action_handler_t.__init__(self)
-
-  def activate(self, ctx):
-    show_choosers()
-    return 1
-
-  def update(self, ctx):
-    return idaapi.AST_ENABLE_ALWAYS
-
-#-----------------------------------------------------------------------
-class CIdaMenuHandlerSaveResults(idaapi.action_handler_t):
-  def __init__(self):
-    idaapi.action_handler_t.__init__(self)
-
-  def activate(self, ctx):
-    save_results()
-    return 1
-
-  def update(self, ctx):
-    return idaapi.AST_ENABLE_ALWAYS
-
-#-----------------------------------------------------------------------
-class CIdaMenuHandlerLoadResults(idaapi.action_handler_t):
-  def __init__(self):
-    idaapi.action_handler_t.__init__(self)
-
-  def activate(self, ctx):
-    load_results()
-    return 1
-
-  def update(self, ctx):
-    return idaapi.AST_ENABLE_ALWAYS
 
 #-----------------------------------------------------------------------
 class CIDABinDiff(diaphora.CBinDiff):
@@ -486,14 +399,14 @@ class CIDABinDiff(diaphora.CBinDiff):
     # register the hotkey for re-opening results
     self.show_choosers()
     self.register_menu()
-    hide_wait_box()
+    # hide_wait_box()
     return res
 
   def do_export(self):
     i = 0
     callgraph_primes = 1
     callgraph_all_primes = {}
-    func_list = list(Functions(self.min_ea, self.max_ea))
+    func_list = [] # TODO list(Functions(self.min_ea, self.max_ea))
     total_funcs = len(func_list)
     t = time.time()
 
@@ -542,7 +455,8 @@ class CIDABinDiff(diaphora.CBinDiff):
       show_wait_box("Exporting database")
       self.do_export()
     finally:
-      hide_wait_box()
+      print "Done"
+      #hide_wait_box()
 
     self.db.commit()
 
@@ -960,7 +874,8 @@ class CIDABinDiff(diaphora.CBinDiff):
         total += 1
       self.db.commit()
     finally:
-      hide_wait_box()
+      print "Nothing"
+      #hide_wait_box()
 
   def do_import_all(self, items):
     # Import all the type libraries from the diff database
@@ -1021,9 +936,7 @@ class CIDABinDiff(diaphora.CBinDiff):
       # Failed to decompile
       return False
 
-    visitor = CAstVisitor(cfunc)
-    visitor.apply_to(cfunc.body, None)
-    self.pseudo_hash[ea] = visitor.primes_hash
+    self.pseudo_hash[ea] = 0 #visitor.primes_hash
 
     sv = cfunc.get_pseudocode();
     self.pseudo[ea] = []
@@ -1053,18 +966,7 @@ class CIDABinDiff(diaphora.CBinDiff):
     return t
 
   def register_menu_action(self, action_name, action_desc, handler, hotkey = None):
-    show_choosers_action = idaapi.action_desc_t(
-      action_name,
-      action_desc,
-      handler,
-      hotkey,
-      None,
-      -1)
-    idaapi.register_action(show_choosers_action)
-    idaapi.attach_action_to_menu(
-        'Edit/Plugins/%s' % action_desc,
-        action_name,
-        idaapi.SETMENU_APP)
+    print "NOPE"
 
   def register_menu(self):
     global g_bindiff
@@ -1437,12 +1339,12 @@ or selecting Edit -> Plugins -> Diaphora - Show results""")
              basic_blocks_data, bb_relations)
 
   def get_base_address(self):
-    return idaapi.get_imagebase()
+    return r2_get_imagebase()
 
   def save_callgraph(self, primes, all_primes, md5sum):
     cur = self.db_cursor()
     sql = "insert into main.program (callgraph_primes, callgraph_all_primes, processor, md5sum) values (?, ?, ?, ?)"
-    proc = idaapi.get_idp_name()
+    proc = r2_get_idp_name()
     if BADADDR == 0xFFFFFFFFFFFFFFFF:
       proc += "64"
     cur.execute(sql, (primes, all_primes, proc, md5sum))
@@ -1487,10 +1389,11 @@ or selecting Edit -> Plugins -> Diaphora - Show results""")
       self.add_program_data(type_name, name, definition)
 
   def get_til_names(self):
-    idb_path = GetIdbPath()
+    idb_path = "" # GetIdbPath()
     filename, ext = os.path.splitext(idb_path)
     til_path = "%s.til" % filename
 
+    return None
     with open(til_path, "rb") as f:
       line = f.readline()
       pos = line.find("Local type definitions")
@@ -1612,23 +1515,13 @@ or selecting Edit -> Plugins -> Diaphora - Show results""")
 def _diff_or_export(use_ui, **options):
   global g_bindiff
 
-  total_functions = len(list(Functions()))
-  if GetIdbPath() == "" or total_functions == 0:
+  total_functions = len([]) # TODO list(Functions()))
+  if False:
     Warning("No IDA database opened or no function in the database.\nPlease open an IDA database and create some functions before running this script.")
     return
 
   opts = BinDiffOptions(**options)
  
-  if use_ui:
-    x = CBinDiffExporterSetup()
-    x.Compile()
-    x.set_options(opts)
-
-    if not x.Execute():
-      return
-
-    opts = x.get_options()
-
   if opts.file_out == opts.file_in:
     Warning("Both databases are the same file!")
     return
@@ -1703,7 +1596,7 @@ def _diff_or_export(use_ui, **options):
 class BinDiffOptions:
   def __init__(self, **kwargs):
     total_functions = len(list(Functions()))
-    sqlite_db = os.path.splitext(GetIdbPath())[0] + ".sqlite"
+    sqlite_db = "output.sqlite" #os.path.splitext(GetIdbPath())[0] + ".sqlite"
     self.file_out = kwargs.get('file_out', sqlite_db)
     self.file_in  = kwargs.get('file_in', '')
     self.use_decompiler = kwargs.get('use_decompiler', True)
@@ -1716,8 +1609,8 @@ class BinDiffOptions:
     self.unreliable = kwargs.get('unreliable', False)
     self.slow = kwargs.get('slow', False)
     self.experimental = kwargs.get('experimental', False)
-    self.min_ea = kwargs.get('min_ea', MinEA())
-    self.max_ea = kwargs.get('max_ea', MaxEA())
+    self.min_ea = 0 # kwargs.get('min_ea', MinEA())
+    self.max_ea = -1 #kwargs.get('max_ea', MaxEA())
     self.ida_subs = kwargs.get('ida_subs', True)
     self.ignore_sub_names = kwargs.get('ignore_sub_names', True)
     self.ignore_all_names = kwargs.get('ignore_all_names', False)
@@ -1839,29 +1732,6 @@ class CHtmlDiff:
         res += "\x01"
 
     return res
-
-#-----------------------------------------------------------------------
-class CAstVisitor(ctree_visitor_t):
-  def __init__(self, cfunc):
-    self.primes = primes(4096)
-    ctree_visitor_t.__init__(self, CV_FAST)
-    self.cfunc = cfunc
-    self.primes_hash = 1
-    return
-
-  def visit_expr(self, expr):
-    try:
-      self.primes_hash *= self.primes[expr.op]
-    except:
-      traceback.print_exc()
-    return 0
-
-  def visit_insn(self, ins):
-    try:
-      self.primes_hash *= self.primes[ins.op]
-    except:
-      traceback.print_exc()
-    return 0
 
 #-----------------------------------------------------------------------
 def is_ida_file(filename):
