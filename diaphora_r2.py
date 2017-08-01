@@ -69,12 +69,15 @@ def CodeRefsTo(x, y):
   return []
 
 def r2_get_imagebase():
-  ep = ((int(r2.cmd("ieq"), 16) >> 24 ) << 24)
+  ep = ((int(r2.cmd("ieq"), 16) >> 24) << 24)
   print "IMAGE BASE %s"%ep
   return ep
 
 def r2_get_idp_name():
   return "fuck"
+
+def GetStructIdByName(x):
+  return None
 
 def decompile(ea):
   return r2.cmd("pdc @ %s"%(ea))
@@ -134,7 +137,7 @@ def Functions(min=0, max=0):
   ret = []
   for fcn in fcns:
     print(fcn['name'])
-    ret.append(fcn['offset'])
+    ret.append(str(fcn['offset']))
   return ret
 
 def Names():
@@ -485,6 +488,7 @@ class CIDABinDiff(diaphora.CBinDiff):
 
         replace_wait_box(line % (i, total_funcs, h_elapsed, m_elapsed, s_elapsed, h, m, s))
 
+      print "PROPS FOR FUNC cur %s"%(func)
       props = self.read_function(func)
       if props == False:
         continue
@@ -641,6 +645,7 @@ class CIDABinDiff(diaphora.CBinDiff):
     ea2 = str(int(item[3], 16))
     self.do_import_one(ea1, ea2, True)
 
+    print "IMPORT ONE"
     new_func = self.read_function(str(ea1))
     self.delete_function(ea1)
     self.save_function(new_func)
@@ -927,6 +932,7 @@ class CIDABinDiff(diaphora.CBinDiff):
       total = 0
       for ea in to_import:
         ea = str(ea)
+        print "FCN IMPORT %s"%ea
         new_func = self.read_function(ea)
         self.delete_function(ea)
         self.save_function(new_func)
@@ -990,7 +996,7 @@ class CIDABinDiff(diaphora.CBinDiff):
     if f is None:
       return False
 
-    cfunc = decompile(f);
+    cfunc = decompile(ea);
     if cfunc is None:
       # Failed to decompile
       return False
@@ -1000,16 +1006,7 @@ class CIDABinDiff(diaphora.CBinDiff):
     sv = cfunc # cfunc.get_pseudocode();
     self.pseudo[ea] = []
     first_line = None
-    for sline in sv:
-      line = tag_remove(sline.line);
-      if line.startswith("//"):
-        continue
-
-      if first_line is None:
-        first_line = line
-      else:
-        self.pseudo[ea].append(line)
-    return first_line
+    return sv.split('\n')[0]
 
   def guess_type(self, ea):
     t = GuessType(ea)
@@ -1077,11 +1074,13 @@ or selecting Edit -> Plugins -> Diaphora - Show results""")
 
   # Most important function 
   def read_function(self, f, discard=False):
+    print "READ F %s"%f
     fcns = r2.cmdj("afij @ %s"%(f))
-    if len(fcns) != 1:
+    if len(fcns) < 1:
       print("Cannot find function at %s"%(f))
       return False
     fcninfo = fcns[0]
+    fcninfo.update({'startEA': fcninfo['offset']})
     name = fcninfo["name"]
     true_name = name
     demangled_name = r2.cmd("is.@ %s"%(f))
@@ -1145,6 +1144,9 @@ or selecting Edit -> Plugins -> Diaphora - Show results""")
       nodes += 1
       block_startEA = +block['addr'];
       block_endEA = +block['addr'] + +block['size'];
+      block.update({'startEA': block_startEA})
+      block.update({'endEA': block_endEA})
+      print "EA %s %s"%(block_startEA, block_endEA)
       instructions_data = []
 
       block_ea = block_startEA - image_base
