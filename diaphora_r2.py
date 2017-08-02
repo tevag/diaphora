@@ -74,8 +74,8 @@ def int16(x):
   try:
     return int(x, 16)
   except:
-    if x != "":
-      print "ERROR converting %s"%x
+    #if x != "":
+    #  print "ERROR converting %s"%x
     return 0
 
 def GetLocalTypeName(x):
@@ -154,7 +154,7 @@ def GetInstructionList():
 def Heads(startEA, endEA):
   # TODO: Return a list with all the instructions between 'startEA', the
   # start address, and 'endEA', the end address.
-  return map(lambda x: int(x, 16), r2.cmd("pId %d @ %s~[0]"%(endEA - startEA, startEA)).split("\n"))
+  return map(int16, r2.cmd("pId %d @ %s~[0]"%(endEA - startEA, startEA)).split("\n"))
 
 def GetCommentEx(x, type):
   return r2.cmd("CC.@ %s"%(x))
