@@ -179,7 +179,8 @@ def GetManyBytes(ea, size, use_dbg=False):
 
 #-----------------------------------------------------------------------
 def GetInputFileMD5():
-  # TODO: Return the MD5 of the current file
+  md5 = r2.cmd("!rahash2 -qa md5 $R2_FILE").split(" ")[0]
+  print ("MD5 %s"%(md5))
   return "md5here"
 
 #-----------------------------------------------------------------------
@@ -1906,9 +1907,10 @@ def main():
     r2 = r2pipe.open()
   else:
     r2 = r2pipe.open(filename)
-  print (r2.cmd("o"))
   
   # perform analysis
+  r2.cmd("e io.cache=true")
+  r2.cmd("aeim")
   r2.cmd("aaa")
   file_out = "output.sqlite"
   if bool(os.getenv("DIAPHORA_AUTO")):
@@ -1920,7 +1922,7 @@ def main():
     g_bindiff = None
     remove_file(file_out)
     #bd = CIDABinDiff(file_out)
-    bd.use_decompiler_always = bool(os.getenv("DIAPHORA_USE_DECOMPILER"))
+    #bd.use_decompiler_always = bool(os.getenv("DIAPHORA_USE_DECOMPILER"))
     #bd.export()
   else:
     _diff_or_export(True)
