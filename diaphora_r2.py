@@ -154,7 +154,7 @@ def GetInstructionList():
 def Heads(startEA, endEA):
   # TODO: Return a list with all the instructions between 'startEA', the
   # start address, and 'endEA', the end address.
-  return map(int16, r2.cmd("pId %d @ %s~[0]"%(endEA - startEA, startEA)).split("\n"))
+  return map(int16, r2.cmd("e asm.flags=false;pId %d @ %s~[0]"%(endEA - startEA, startEA)).split("\n"))
 
 def GetCommentEx(x, type):
   return r2.cmd("CC.@ %s"%(x))
