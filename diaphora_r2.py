@@ -57,80 +57,153 @@ You can disable it by un-checking the 'Do not export basic blocks<br>
 or instructions' option."""
 
 #-----------------------------------------------------------------------
-
 BADADDR = 0xFFFFFFFFFFFFFFFF
 r2 = None
 
+#-----------------------------------------------------------------------
 def GetMaxLocalType():
+  # It's used, in IDA, to return the total number of structs, enums and
+  # unions. I doubt there is something similar in r2.
   return 0
 
+#-----------------------------------------------------------------------
 def CodeRefsTo(x, y):
+  # TODO: Return a list of code references to address 'x'. The value 'y',
+  # in IDA, is used to consider the previous instruction (y=1) as a valid
+  # code reference or if it should be ignored (y=0).
   print "XREF"
   return []
 
+#-----------------------------------------------------------------------
 def r2_get_imagebase():
   ep = ((int(r2.cmd("ieq"), 16) >> 24) << 24)
   print "IMAGE BASE %s"%ep
   return ep
 
+#-----------------------------------------------------------------------
 def r2_get_idp_name():
+  # TODO: idaapi.get_idp_name() returns the current processor (CPU arch)
+  # of the opened binary.
   return "fuck"
 
+#-----------------------------------------------------------------------
 def GetStructIdByName(x):
+  # Relevant to structs: get the internal id of a struct by its name.
   return None
 
+#-----------------------------------------------------------------------
 def decompile(ea):
+  # If only it was that easy... Will partially work.
   return r2.cmd("pdc @ %s"%(ea))
 
+#-----------------------------------------------------------------------
 def get_func(ea):
+  # In IDA, it should return a "function object". Mostly specific to get
+  # the start and end address, as well as the size, etc...
   return {}
 
+#-----------------------------------------------------------------------
 def GetInstructionList():
-  # wtf
+  # TODO: Return a list of the total mnemonics supported by the current
+  # disassembler. It's used to calculate the small-primes-product of the
+  # function, by assigning a prime correspondent to the mnemonic in the
+  # given list. Example:
+  #
+  # CPU_MY_ARCH = ["push", "pop", "call", "ret", "mov"]
+  #
+  # Given than example instruction set, push would be 2, pop 3, call 5,
+  # ret 7 and mov 11. Then, for a function like this:
+  #
+  # push 1
+  # pop  y
+  # call x
+  # ret
+  #
+  # ...it would calculate a SPP of 2*3*5*7 (210). If the instructions
+  # are re-ordered, it will still give out the same "hash" value and,
+  # also, if there are different instructions when comparing 2 functions
+  # we can just remove all the common primes in the 2 sets and determine
+  # which are the specific instructions that are different between them.
+  #
   return []
 
+#-----------------------------------------------------------------------
 def Heads(startEA, endEA):
-  # TODO: wat to return here? all the bbs?
+  # TODO: Return a list with all the instructions between 'startEA', the
+  # start address, and 'endEA', the end address.
   return []
 
+#-----------------------------------------------------------------------
 def SegStart(ea):
+  # Just return the segment's start address
   return int(r2.cmd("S.~[0]"), 16)
 
+#-----------------------------------------------------------------------
 def GetFunctionFlags(fcn):
-  # TODO: wat to return here? all the bbs?
+  # TODO: Return if it looks like a function library, a thunk or a jump
   return -1 # FUNC_LIB
-  #  flags = GetFunctionFlags(f)
-  #  if flags & FUNC_LIB or flags & FUNC_THUNK or flags == -1:
 
+#-----------------------------------------------------------------------
 def GuessType(ea):
-  # TODO: wat to return here? all the bbs?
+  # TODO: It should return the guessed type of the current function.
+  #
+  # For example: for a strcpy like function, it should return a prototype
+  # like:
+  #
+  # char __cdecl *strcpy(char *dst, const char *src);
+  #
+  # NOTE: It expects a semi-colon (;) at the end of the prototype.
+  # NOTE 2: The calling convention is optional.
   return None
 
+#-----------------------------------------------------------------------
 def GetFunctionCmt(ea, type):
-  # TODO: wat to return here? all the bbs?
+  # Simply return the function's comment, if any
   return r2.cmd("CCf")
 
+#-----------------------------------------------------------------------
 def GetType(ea):
-  # TODO: wat to return here? all the bbs?
+  # Used to get the already set type of the specified function. It is a
+  # bit different to GuessType. GuessType() guesses the type regardless
+  # of it being set or not. GetType() just returns whatever type is set
+  # to the function
   return None
 
-def GetManyBytes(ea):
+#-----------------------------------------------------------------------
+def GetManyBytes(ea, size, use_dbg=False):
+  # Return a buffer with the contents from 'ea' (address) to 'ea' + size.
+  # The option argument 'use_dbg' is used to determine if the buffer is
+  # read from the file or from memory (if using a debugger). That 3rd
+  # optional parameter makes no sense in Diaphora.
   return [] # XXX
 
+#-----------------------------------------------------------------------
 def GetInputFileMD5():
+  # TODO: Return the MD5 of the current file
   return "md5here"
 
+#-----------------------------------------------------------------------
 def MinEA():
+  # TODO: Return the minimum address in the database.
+  # For example, if the first segment in the program being analysed is
+  # starting at 0x401000, then, that's the minimum address.
   print "MINEA CALLED"
   return 0
 
+#-----------------------------------------------------------------------
 def MaxEA():
-  print "MAXEA CALLED"
+  # TODO: Return the maximum (read, last) address in the database.
+  # For example, if the last segment in the program being analysed does
+  # end at 0x401FFF, then, that's the maximum address.
   return 0x80000
 
+#-----------------------------------------------------------------------
 def askyn_c(a, b):
+  # It doesn't make any sense to me for the r2 exporter. askyn_c is used
+  # in IDA to show a dialog and ask the reverser to answer "Yes" or "No".
   return
 
+#-----------------------------------------------------------------------
 def Functions(min=0, max=0):
   print "LIST OF FUNCTION"
   fcns = r2.cmdj("aflj")
@@ -140,14 +213,19 @@ def Functions(min=0, max=0):
     ret.append(str(fcn['offset']))
   return ret
 
+#-----------------------------------------------------------------------
 def Names():
-  # XXX what should i return here?
+  # TODO: Return a dictionary with {"name_of_thing":0xaddress}
+  #
+  # Example: {"main": 0x401000, "foo":0x4010200, "global_var": 0x402010}
+  #
   fcns = r2.cmdj("aflj")
   ret = []
   for fcn in fcns:
     ret.append(fcn['name'])
   return ret
 
+#-----------------------------------------------------------------------
 def log(msg):
   print("[%s] %s\n" % (time.asctime(), msg))
 
@@ -155,9 +233,11 @@ def log(msg):
 def show_wait_box(msg, show=False):
   print(msg)
 
+#-----------------------------------------------------------------------
 def replace_wait_box(msg, show=False):
   print(msg)
 
+#-----------------------------------------------------------------------
 def log_refresh(msg, show=False):
   if show:
     show_wait_box(msg)
@@ -435,7 +515,7 @@ class CDiffGraphViewer():
 #-----------------------------------------------------------------------
 class CIDABinDiff(diaphora.CBinDiff):
   def __init__(self, db_name):
-    diaphora.CBinDiff.__init__(self, db_name) #, chooser=CIDAChooser)
+    diaphora.CBinDiff.__init__(self, db_name)
     self.names = [] # TODO dict(Names())
     self.min_ea = MinEA()
     self.max_ea = MaxEA()
@@ -1821,11 +1901,13 @@ def main():
   filename = os.getenv("R2_FILE")
   if filename is None:
     filename = sys.argv[1]
+    
   if os.getenv("R2PIPE_IN") is not None:
     r2 = r2pipe.open()
   else:
     r2 = r2pipe.open(filename)
   print (r2.cmd("o"))
+  
   # perform analysis
   r2.cmd("aaa")
   file_out = "output.sqlite"
@@ -1833,6 +1915,7 @@ def main():
     file_out = os.getenv("DIAPHORA_EXPORT_FILE")
     if file_out is None:
       raise Exception("No export file specified!")
+
   if os.path.exists(file_out):
     g_bindiff = None
     remove_file(file_out)
