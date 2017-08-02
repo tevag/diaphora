@@ -74,8 +74,8 @@ def int16(x):
   try:
     return int(x, 16)
   except:
-    #if x != "":
-    #  print "ERROR converting %s"%x
+    if x != "":
+      print "ERROR converting %s"%x
     return 0
 
 def GetLocalTypeName(x):
@@ -154,14 +154,14 @@ def GetInstructionList():
 def Heads(startEA, endEA):
   # TODO: Return a list with all the instructions between 'startEA', the
   # start address, and 'endEA', the end address.
-  return map(int16, r2.cmd("e asm.flags=false;pId %d @ %s~[0]"%(endEA - startEA, startEA)).split("\n"))
+  return map(int16, r2.cmd("pId %d @ %s~[0]"%(endEA - startEA, startEA)).split("\n"))
 
 def GetCommentEx(x, type):
   return r2.cmd("CC.@ %s"%(x))
 
 def diaphora_decode(x):
   decoded_size = int(r2.cmd("ao~size[1]"))
-  opinfo = r2.cmdj("aoj")
+  #opinfo = r2.cmdj("aoj")
   ins = {'Operands': []}
   #ins["Operands"] = [ ] # XXX
   # if ins.Operands[0].type in [o_mem, o_imm, o_far, o_near, o_displ]:
@@ -1956,6 +1956,8 @@ def main():
     r2 = r2pipe.open(filename)
   
   # perform analysis
+  r2.cmd("e asm.flags=false")
+  r2.cmd("e asm.bytes=false")
   r2.cmd("e io.cache=true")
   r2.cmd("aeim")
   r2.cmd("aaa")
