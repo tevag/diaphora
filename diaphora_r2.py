@@ -64,15 +64,37 @@ r2 = None
 def GetMaxLocalType():
   # It's used, in IDA, to return the total number of structs, enums and
   # unions. I doubt there is something similar in r2.
-  return 0
+  return int(r2.cmd('t~?'))
+
+def get_switch_info_ex(ea):
+  # TODO
+  return []
+
+def int16(x):
+  try:
+    return int(x, 16)
+  except:
+    if x != "":
+      print "ERROR converting %s"%x
+    return 0
+
+def GetLocalTypeName(x):
+  return ""
 
 #-----------------------------------------------------------------------
 def CodeRefsTo(x, y):
   # TODO: Return a list of code references to address 'x'. The value 'y',
   # in IDA, is used to consider the previous instruction (y=1) as a valid
   # code reference or if it should be ignored (y=0).
-  print "XREF"
-  return []
+  return map(int16, r2.cmd('axtq.@ %s'%(x)).split('\n'))
+
+def CodeRefsFrom(x, y):
+  # ??? 
+  return map(int16, r2.cmd('axfq.@ %s'%(x)).split('\n'))
+
+def GetOperandValue(x, y):
+  # TODO XXX
+  return 0
 
 #-----------------------------------------------------------------------
 def r2_get_imagebase():
@@ -84,7 +106,8 @@ def r2_get_imagebase():
 def r2_get_idp_name():
   # TODO: idaapi.get_idp_name() returns the current processor (CPU arch)
   # of the opened binary.
-  return "fuck"
+  return r2.cmd('ij~{core.arch}')
+  #return r2.cmd('e asm.arch')
 
 #-----------------------------------------------------------------------
 def GetStructIdByName(x):
@@ -131,7 +154,19 @@ def GetInstructionList():
 def Heads(startEA, endEA):
   # TODO: Return a list with all the instructions between 'startEA', the
   # start address, and 'endEA', the end address.
-  return []
+  return map(lambda x: int(x, 16), r2.cmd("pId %d @ %s~[0]"%(endEA - startEA, startEA)).split("\n"))
+
+def GetCommentEx(x, type):
+  return r2.cmd("CC.@ %s"%(x))
+
+def diaphora_decode(x):
+  decoded_size = int(r2.cmd("ao~size[1]"))
+  opinfo = r2.cmdj("aoj")
+  ins = {'Operands': []}
+  #ins["Operands"] = [ ] # XXX
+  # if ins.Operands[0].type in [o_mem, o_imm, o_far, o_near, o_displ]:
+  # AttributeError: 'unicode' object has no attribute 'Operands'
+  return decoded_size, ins
 
 #-----------------------------------------------------------------------
 def SegStart(ea):
@@ -175,7 +210,9 @@ def GetManyBytes(ea, size, use_dbg=False):
   # The option argument 'use_dbg' is used to determine if the buffer is
   # read from the file or from memory (if using a debugger). That 3rd
   # optional parameter makes no sense in Diaphora.
-  return [] # XXX
+  bytes = r2.cmdj('p8j %s @ %s'%(size, ea))
+  return "".join(map(chr, bytes))
+  
 
 #-----------------------------------------------------------------------
 def GetInputFileMD5():
@@ -188,16 +225,23 @@ def MinEA():
   # TODO: Return the minimum address in the database.
   # For example, if the first segment in the program being analysed is
   # starting at 0x401000, then, that's the minimum address.
-  print "MINEA CALLED"
-  return 0
+  return int(r2.cmd('S~:[5]'),16)
 
 #-----------------------------------------------------------------------
 def MaxEA():
   # TODO: Return the maximum (read, last) address in the database.
   # For example, if the last segment in the program being analysed does
   # end at 0x401FFF, then, that's the maximum address.
-  return 0x80000
+  return int(r2.cmd('S=~:-1[3]'), 16)
 
+def GetMnem(x):
+  return r2.cmd('pi 1 @ %s'%(x)).split(' ')[0]
+
+def GetDisasm(x):
+  return r2.cmd('pi 1 @ %s'%(x))
+
+def ItemSize(x):
+  return int(r2.cmd('ao~size[1]'), 16)
 #-----------------------------------------------------------------------
 def askyn_c(a, b):
   # It doesn't make any sense to me for the r2 exporter. askyn_c is used
@@ -219,12 +263,11 @@ def Names():
   # TODO: Return a dictionary with {"name_of_thing":0xaddress}
   #
   # Example: {"main": 0x401000, "foo":0x4010200, "global_var": 0x402010}
-  #
-  fcns = r2.cmdj("aflj")
-  ret = []
-  for fcn in fcns:
-    ret.append(fcn['name'])
-  return ret
+  res = {}
+  for flag in r2.cmd("f").split("\n"):
+    w = flag.split(" ")
+    res[w[2]] = w[0]
+  return res
 
 #-----------------------------------------------------------------------
 def log(msg):
@@ -1250,17 +1293,20 @@ or selecting Edit -> Plugins -> Diaphora - Show results""")
           if nodes == 1:
             assembly[block_ea] = [disasm]
           else:
-            assembly[block_ea] = ["loc_%x:" % x, disasm]
+            try:
+              assembly[block_ea] = ["loc_%x:" % x, disasm]
+            except:
+              assembly[block_ea] = ["loc_%s:" % x, disasm]
 
         decoded_size, ins = diaphora_decode(x)
-        if ins.Operands[0].type in [o_mem, o_imm, o_far, o_near, o_displ]:
-          decoded_size -= ins.Operands[0].offb
-        if ins.Operands[1].type in [o_mem, o_imm, o_far, o_near, o_displ]:
-          decoded_size -= ins.Operands[1].offb
-        if decoded_size <= 0:
-          decoded_size = 1
+        #if ins.Operands[0].type in [o_mem, o_imm, o_far, o_near, o_displ]:
+        #  decoded_size -= ins.Operands[0].offb
+        #if ins.Operands[1].type in [o_mem, o_imm, o_far, o_near, o_displ]:
+        #  decoded_size -= ins.Operands[1].offb
+        #if decoded_size <= 0:
+        #  decoded_size = 1
 
-        for oper in ins.Operands:
+        for oper in []: # TODO ins.Operands:
           if oper.type == o_imm:
             if self.is_constant(oper, x) and self.constant_filter(oper.value):
               constants.append(oper.value)
@@ -1275,7 +1321,7 @@ or selecting Edit -> Plugins -> Diaphora - Show results""")
 
         curr_bytes = GetManyBytes(x, decoded_size, False)
         if curr_bytes is None or len(curr_bytes) != decoded_size:
-            log("Failed to read %d bytes at [%08x]" % (decoded_size, x))
+            log("Failed to read %s bytes at [%s]" % (decoded_size, x))
             continue
 
         bytes_hash.append(curr_bytes)
@@ -1520,9 +1566,10 @@ or selecting Edit -> Plugins -> Diaphora - Show results""")
       log("Warning: GetMaxLocalType returned a negative number (0x%x)!" % local_types)
       return
 
+    # XXX this is not working
     for i in range(local_types):
       name = GetLocalTypeName(i+1)
-      definition = self.GetLocalType(i+1, PRTYPE_MULTI | PRTYPE_TYPE | PRTYPE_SEMI | PRTYPE_PRAGMA)
+      definition = "" # self.GetLocalType(i+1, PRTYPE_MULTI | PRTYPE_TYPE | PRTYPE_SEMI | PRTYPE_PRAGMA)
       type_name = "struct"
       if definition.startswith("enum"):
         type_name = "enum"
