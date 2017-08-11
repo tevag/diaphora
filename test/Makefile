@@ -1,5 +1,6 @@
 all: c.sqlite
-	echo 'select * from results;' | sqlite3 c.sqlite | column -s '|' -t
+	#echo 'select * from results;' | sqlite3 c.sqlite | column -s '|' -t
+	( echo '.mode column'; echo '.headers on' ; echo 'select * from results;' )| sqlite3 c.sqlite
 
 c.sqlite: a.sqlite b.sqlite
 	python ../diaphora.py -o c.sqlite a.sqlite b.sqlite
