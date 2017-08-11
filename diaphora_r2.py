@@ -154,7 +154,8 @@ def GetInstructionList():
 def Heads(startEA, endEA):
   # TODO: Return a list with all the instructions between 'startEA', the
   # start address, and 'endEA', the end address.
-  return map(int16, r2.cmd("pId %d @ %s~[0]"%(endEA - startEA, startEA)).split("\n"))
+  res = r2.cmd("pId %d @ %s~[0]"%(endEA - startEA, startEA))
+  return map(int16, res.split("\n"))
 
 def GetCommentEx(x, type):
   return r2.cmd("CC.@ %s"%(x))
@@ -323,147 +324,6 @@ def import_definitions():
   if filename is not None:
     if askyn_c(1, "HIDECANCEL\nDo you really want to import all structures, unions and enumerations?") == 1:
       tmp_diff.import_definitions_only(filename)
-
-
-#-----------------------------------------------------------------------
-class CIDAChooser(diaphora.CChooser):
-
-  def __init__(self, title, bindiff, show_commands=True):
-    diaphora.CChooser.__init__(self, title, bindiff, show_commands)
-    if title.startswith("Unmatched in"):
-      Choose2.__init__(self, title, [ ["Line", 8], ["Address", 8], ["Name", 20] ], Choose2.CH_MULTI)
-    else:
-      Choose2.__init__(self, title, [ ["Line", 8], ["Address", 8], ["Name", 20], ["Address 2", 8], ["Name 2", 20],
-                                      ["Ratio", 5], ["BBlocks 1", 5], ["BBlocks 2", 5], ["Description", 30] ], Choose2.CH_MULTI)
-
-  def OnClose(self):
-    """space holder"""
-    return True
-
-  def OnEditLine(self, n):
-    """space holder"""
-
-  def OnInsertLine(self):
-    pass
-
-  def OnSelectLine(self, n):
-    item = self.items[int(n)]
-    if self.primary:
-      try:
-        jump_ea = int(item[1], 16)
-        # Only jump for valid addresses
-        if isEnabled(jump_ea):
-          jumpto(jump_ea)
-      except:
-        print "OnSelectLine", sys.exc_info()[1]
-    else:
-      self.bindiff.show_asm(self.items[n], self.primary)
-
-  def OnGetLine(self, n):
-    try:
-      return self.items[n]
-    except:
-      print "OnGetLine", sys.exc_info()[1]
-
-  def OnGetSize(self):
-    return len(self.items)
-
-  def OnDeleteLine(self, n):
-    try:
-      del self.items[n]
-    except:
-      pass
-    return True
-
-  def OnRefresh(self, n):
-    return n
-
-  def show(self, force=False):
-    t = self.Show()
-    if t < 0:
-      return False
-
-    if self.show_commands and (self.cmd_diff_asm is None or force):
-      # create aditional actions handlers
-      self.cmd_diff_asm = self.AddCommand("Diff assembly")
-      self.cmd_diff_c = self.AddCommand("Diff pseudo-code")
-      self.cmd_diff_graph = self.AddCommand("Diff assembly in a graph")
-      self.cmd_import_selected = self.AddCommand("Import selected")
-      self.cmd_import_all = self.AddCommand("Import *all* functions")
-      self.cmd_import_all_funcs = self.AddCommand("Import *all* data for sub_* functions")
-      self.cmd_highlight_functions = self.AddCommand("Highlight matches")
-      self.cmd_unhighlight_functions = self.AddCommand("Unhighlight matches")
-      self.cmd_save_results = self.AddCommand("Save diffing results")
-    elif not self.show_commands and (self.cmd_show_asm is None or force):
-      self.cmd_show_asm = self.AddCommand("Show assembly")
-      self.cmd_show_pseudo = self.AddCommand("Show pseudo-code")
-
-    return True
-
-  def OnCommand(self, n, cmd_id):
-    # Aditional right-click-menu commands handles
-    if cmd_id == self.cmd_import_all:
-      if askyn_c(1, "HIDECANCEL\nDo you really want to import all matched functions, comments, prototypes and definitions?") == 1:
-        self.bindiff.import_all(self.items)
-    elif cmd_id == self.cmd_import_all_funcs:
-      if askyn_c(1, "HIDECANCEL\nDo you really want to import all IDA named matched functions, comments, prototypes and definitions?") == 1:
-        self.bindiff.import_all_auto(self.items)
-    elif cmd_id == self.cmd_import_selected:
-      if len(self.selected_items) <= 1:
-        self.bindiff.import_one(self.items[n])
-      else:
-        if askyn_c(1, "HIDECANCEL\nDo you really want to import all selected IDA named matched functions, comments, prototypes and definitions?") == 1:
-          self.bindiff.import_selected(self.items, self.selected_items)
-    elif cmd_id == self.cmd_diff_c:
-      self.bindiff.show_pseudo_diff(self.items[n])
-    elif cmd_id == self.cmd_diff_asm:
-      self.bindiff.show_asm_diff(self.items[n])
-    elif cmd_id == self.cmd_show_asm:
-      self.bindiff.show_asm(self.items[n], self.primary)
-    elif cmd_id == self.cmd_show_pseudo:
-      self.bindiff.show_pseudo(self.items[n], self.primary)
-    elif cmd_id == self.cmd_highlight_functions:
-      if askyn_c(1, "HIDECANCEL\nDo you want to change the background color of each matched function?") == 1:
-        color = self.get_color()
-        for item in self.items:
-          ea = int(item[1], 16)
-          if not SetColor(ea, CIC_FUNC, color):
-            print "Error setting color for %x" % ea
-        Refresh()
-    elif cmd_id == self.cmd_unhighlight_functions:
-      for item in self.items:
-        ea = int(item[1], 16)
-        if not SetColor(ea, CIC_FUNC, 0xFFFFFF):
-          print "Error setting color for %x" % ea
-      Refresh()
-    elif cmd_id == self.cmd_diff_graph:
-      item = self.items[n]
-      ea1 = int(item[1], 16)
-      name1 = item[2]
-      ea2 = int(item[3], 16)
-      name2 = item[4]
-      log("Diff graph for 0x%x - 0x%x" % (ea1, ea2))
-      self.bindiff.graph_diff(ea1, name1, ea2, name2)
-    elif cmd_id == self.cmd_save_results:
-      filename = AskFile(1, "*.diaphora", "Select the file to store diffing results")
-      if filename is not None:
-        self.bindiff.save_results(filename)
-
-    return True
-
-  def OnSelectionChange(self, sel_list):
-    self.selected_items = sel_list
-
-  def OnGetLineAttr(self, n):
-    if not self.title.startswith("Unmatched"):
-      item = self.items[n]
-      ratio = float(item[5])
-      red = int(164 * (1 - ratio))
-      green = int(128 * ratio)
-      blue = int(255 * (1 - ratio))
-      color = int("0x%02x%02x%02x" % (blue, green, red), 16)
-      return [color, 0]
-    return [0xFFFFFF, 0]
 
 #-----------------------------------------------------------------------
 class timeraction_t(object):
@@ -1270,7 +1130,7 @@ or selecting Edit -> Plugins -> Diaphora - Show results""")
       block_endEA = +block['addr'] + +block['size'];
       block.update({'startEA': block_startEA})
       block.update({'endEA': block_endEA})
-      print "EA %s %s"%(block_startEA, block_endEA)
+      print "BB %s %s"%(block_startEA, block_endEA)
       instructions_data = []
 
       block_ea = block_startEA - image_base
@@ -1726,6 +1586,9 @@ def _diff_or_export(use_ui, **options):
   elif opts.file_out == "" or len(opts.file_out) < 5:
     Warning("No output database selected or invalid filename. Please select a database file.")
     return
+  elif is_r2_file(opts.file_in) or is_r2_file(opts.file_out):
+    Warning("TODO: this will run r2 with this script and no file opened, Support for projects must be done too.")
+    return
   elif is_ida_file(opts.file_in) or is_ida_file(opts.file_out):
     Warning("Hahhahahh, no seriously, what are you trying to do?")
     return
@@ -1933,6 +1796,10 @@ class CHtmlDiff:
     return res
 
 #-----------------------------------------------------------------------
+def is_r2_file(filename):
+  fn = filename.lower()
+  return fn.endswith(".r2")
+
 def is_ida_file(filename):
   fn = filename.lower()
   return fn.endswith(".idb") or fn.endswith(".i64") or \
