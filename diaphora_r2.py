@@ -61,6 +61,36 @@ BADADDR = 0xFFFFFFFFFFFFFFFF
 r2 = None
 
 #-----------------------------------------------------------------------
+
+def block_succs(addr):
+  bb = r2.cmdj("afbj.")[0]
+  res = []
+  try:
+    res.append(int(bb["jump"]))
+  except:
+    pass
+  try:
+    res.append(int(bb['fail']))
+  except:
+    pass
+  return res
+
+def block_preds(addr):
+  bbs = r2.cmdj("afbj")
+  res = []
+  for bb in bbs:
+    try:
+      if +bb["jump"] == addr:
+        res.push (+bb["addr"])
+    except:
+      pass
+    try:
+      if +bb["fail"] == addr:
+        res.push (+bb["addr"])
+    except:
+      pass
+  return res
+
 def GetMaxLocalType():
   # It's used, in IDA, to return the total number of structs, enums and
   # unions. I doubt there is something similar in r2.
@@ -1246,8 +1276,9 @@ or selecting Edit -> Plugins -> Diaphora - Show results""")
         # bb in degree, out degree
         bb_degree[block_ea] = [0, 0]
         
-      for succ_block in []: # TODO block.succs():
-        succ_base = succ_block.startEA - image_base
+      #for succ_block in []: # TODO block.succs():
+      for succ_block in block_succs(block_startEA):
+        succ_base = succ_block - image_base #.startEA - image_base
         bb_relations[block_ea].append(succ_base)
         bb_degree[block_ea][1] += 1
         bb_edges.append((block_ea, succ_base))
@@ -1257,23 +1288,26 @@ or selecting Edit -> Plugins -> Diaphora - Show results""")
 
         edges += 1
         indegree += 1
-        if not dones.has_key(succ_block.id):
+        if not dones.has_key(succ_block):
           dones[succ_block] = 1
 
-      for pred_block in []: # TODO block.preds():
+      for pred_block in block_preds(block_startEA):
         try:
-          bb_relations[pred_block.startEA - image_base].append(block.startEA - image_base)
+          bb_relations[pred_block - image_base].append(block.startEA - image_base)
         except KeyError:
-          bb_relations[pred_block.startEA - image_base] = [block.startEA - image_base]
+          bb_relations[pred_block - image_base] = [block.startEA - image_base]
 
         edges += 1
         outdegree += 1
-        if not dones.has_key(succ_block.id):
-          dones[succ_block] = 1
+        #if not dones.has_key(succ_block):
+        #  dones[succ_block] = 1
+        if not dones.has_key(pred_block):
+          dones[pred_block] = 1
 
     for block in flow:
+      block_startEA = +block['addr'];
       block_ea = block_startEA - image_base
-      for succ_block in []: ## TODO block.succs():
+      for succ_block in block_succs(block_startEA):
         succ_base = succ_block_startEA - image_base
         bb_topological[bb_topo_num[block_ea]].append(bb_topo_num[succ_base])
 

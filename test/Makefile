@@ -14,3 +14,6 @@ b.sqlite: b.c
 	$(CC) b.c -o b
 	python ../diaphora_r2.py b
 	mv output.sqlite b.sqlite
+
+clean:
+	rm -f a b a.sqlite b.sqlite c.sqlite
