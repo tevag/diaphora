@@ -256,7 +256,7 @@ def MinEA():
   # TODO: Return the minimum address in the database.
   # For example, if the first segment in the program being analysed is
   # starting at 0x401000, then, that's the minimum address.
-  return int(r2.cmd('S~:[5]'),16)
+  return int(r2.cmd('S~:[6]'),16)
 
 #-----------------------------------------------------------------------
 def MaxEA():
@@ -1308,7 +1308,7 @@ or selecting Edit -> Plugins -> Diaphora - Show results""")
       block_startEA = +block['addr'];
       block_ea = block_startEA - image_base
       for succ_block in block_succs(block_startEA):
-        succ_base = succ_block_startEA - image_base
+        succ_base = block_startEA - image_base
         bb_topological[bb_topo_num[block_ea]].append(bb_topo_num[succ_base])
 
     strongly_connected_spp = 0
@@ -1861,7 +1861,9 @@ def main():
   r2.cmd("e asm.bytes=false")
   r2.cmd("e io.cache=true")
   r2.cmd("aeim")
-  r2.cmd("aaa")
+  #r2.cmd("aaa")
+  r2.cmd("aab")
+  r2.cmd("aac")
   file_out = "output.sqlite"
   if bool(os.getenv("DIAPHORA_AUTO")):
     file_out = os.getenv("DIAPHORA_EXPORT_FILE")
