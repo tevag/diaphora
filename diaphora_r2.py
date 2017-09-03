@@ -298,8 +298,11 @@ def askyn_c(a, b):
 #-----------------------------------------------------------------------
 def Functions(min=0, max=0):
   print "LIST OF FUNCTION"
-  fcns = r2.cmdj("aflj")
   ret = []
+  fcns = r2.cmdj("aflj")
+  if not fcns:
+    print "[ERROR] No functions found"
+    return ret
   for fcn in fcns:
     print(fcn['name'])
     ret.append(str(fcn['offset']))
@@ -1687,7 +1690,6 @@ def _diff_or_export(use_ui, **options):
   except:
     print("Error: %s" % sys.exc_info()[1])
     traceback.print_exc()
-
   return bd
 
 #-----------------------------------------------------------------------
@@ -1854,6 +1856,7 @@ def main():
     
   if in_r2:
     r2 = r2pipe.open()
+    # TODO: #!pipe doesnt setups the R2_ env
     filename = r2.cmd("o~[4]")
   else:
     if filename is None:
@@ -1875,6 +1878,7 @@ def main():
     #r2.cmd("aac")
 
   file_out = "output.sqlite"
+  # TODO parse arguments
   if bool(os.getenv("DIAPHORA_AUTO")):
     file_out = os.getenv("DIAPHORA_EXPORT_FILE")
     if file_out is None:
@@ -1882,12 +1886,16 @@ def main():
 
   if os.path.exists(file_out):
     g_bindiff = None
-    if input("Remove %s ?"%(file_out))[0].lower() == 'y':
+    if raw_input("Remove %s? "%(file_out))[0].lower() == "y":
       os.unlink(file_out)
       _diff_or_export(True)
-    print("Please remove %s and run again"%(file_out))
+    else:
+      print("Please remove %s and run again"%(file_out))
+      r2.quit()
+      sys.exit(1)
   else:
     _diff_or_export(True)
+  print("File created %s"%(file_out))
   r2.quit()
 
 if __name__ == "__main__":
