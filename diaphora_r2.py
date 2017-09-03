@@ -1848,12 +1848,13 @@ def remove_file(filename):
 def main():
   global r2
   filename = os.getenv("R2_FILE")
-  if filename is None:
-    filename = sys.argv[1]
     
   if os.getenv("R2PIPE_IN") is not None:
     r2 = r2pipe.open()
+    filename = r2.cmd("o~[4]")
   else:
+    if filename is None:
+      filename = sys.argv[1]
     r2 = r2pipe.open(filename)
   
   # perform analysis
