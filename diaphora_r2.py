@@ -1,5 +1,8 @@
 """
-Diaphora, a diffing plugin for IDA
+Diaphora, a diffing plugin for Radare2
+Copyright (c) 2017, Sergi Alvarez
+
+Based on IDA backend by:
 Copyright (c) 2015-2017, Joxean Koret
 
 This program is free software: you can redistribute it and/or modify
@@ -63,8 +66,13 @@ r2 = None
 #-----------------------------------------------------------------------
 
 def block_succs(addr):
-  bb = r2.cmdj("afbj.")[0]
   res = []
+  try:
+    bb = r2.cmdj("afbj.@%s"%(addr))
+  except:
+    print("NO BASIC BLOCK AT %s"%(addr))
+    return res
+  bb = bb[0]
   try:
     res.append(int(bb["jump"]))
   except:
@@ -76,8 +84,15 @@ def block_succs(addr):
   return res
 
 def block_preds(addr):
-  bbs = r2.cmdj("afbj")
   res = []
+  try:
+    bbs = r2.cmdj("afbj@%s"%(addr))
+  except:
+    print("NO BASIC BLOCKS FOR %s"%(addr))
+    return res
+  if not bbs:
+    print("EMPTY BB LIST FOR %s"%(addr))
+    return res
   for bb in bbs:
     try:
       if +bb["jump"] == addr:
@@ -128,7 +143,8 @@ def GetOperandValue(x, y):
 
 #-----------------------------------------------------------------------
 def r2_get_imagebase():
-  ep = ((int(r2.cmd("ieq"), 16) >> 24) << 24)
+  #ep = ((int(r2.cmd("ieq"), 16) >> 24) << 24)
+  ep = int(r2.cmd("S.~[0]"), 16)
   print "IMAGE BASE %s"%ep
   return ep
 
@@ -332,20 +348,6 @@ def show_choosers():
   if g_bindiff is not None:
     g_bindiff.show_choosers(True)
 
-#-----------------------------------------------------------------------
-def save_results():
-  global g_bindiff
-  if g_bindiff is not None:
-    filename = AskFile(1, "*.diaphora", "Select the file to store diffing results")
-    if filename is not None:
-      g_bindiff.save_results(filename)
-
-#-----------------------------------------------------------------------
-def load_results():
-  tmp_diff = CIDABinDiff(":memory:")
-  filename = AskFile(0, "*.diaphora", "Select the file to load diffing results")
-  if filename is not None:
-    tmp_diff.load_results(filename)
 
 #-----------------------------------------------------------------------
 def import_definitions():
@@ -401,7 +403,7 @@ class CDiffGraphViewer():
       self.nodes = {}
       self.colours = colours
     except:
-      Warning("CDiffGraphViewer: OnInit!!! " + str(sys.exc_info()[1]))
+      print("CDiffGraphViewer: OnInit!!! " + str(sys.exc_info()[1]))
 
   def OnRefresh(self):
     try:
@@ -625,7 +627,7 @@ class CIDABinDiff(diaphora.CBinDiff):
     cur.execute(sql, (ea1, ea2))
     rows = cur.fetchall()
     if len(rows) != 2:
-      Warning("Sorry, there is no assembly available for either the first or the second database.")
+      print("Sorry, there is no assembly available for either the first or the second database.")
     else:
       row1 = rows[0]
       row2 = rows[1]
@@ -678,7 +680,7 @@ class CIDABinDiff(diaphora.CBinDiff):
     cur.execute(sql, (ea, ))
     row = cur.fetchone()
     if row is None:
-      Warning("Sorry, there is no assembly available for the selected function.")
+      print("Sorry, there is no assembly available for the selected function.")
     else:
       fmt = HtmlFormatter()
       fmt.noclasses = True
@@ -704,7 +706,7 @@ class CIDABinDiff(diaphora.CBinDiff):
     cur.execute(sql, (str(ea), ))
     row = cur.fetchone()
     if row is None or row["prototype"] is None or row["pseudocode"] is None:
-      Warning("Sorry, there is no pseudo-code available for the selected function.")
+      print("Sorry, there is no pseudo-code available for the selected function.")
     else:
       fmt = HtmlFormatter()
       fmt.noclasses = True
@@ -734,7 +736,7 @@ class CIDABinDiff(diaphora.CBinDiff):
     cur.execute(sql, (ea1, ea2))
     rows = cur.fetchall()
     if len(rows) != 2:
-      Warning("Sorry, there is no pseudo-code available for either the first or the second database.")
+      print("Sorry, there is no pseudo-code available for either the first or the second database.")
     else:
       row1 = rows[0]
       row2 = rows[1]
@@ -755,7 +757,7 @@ class CIDABinDiff(diaphora.CBinDiff):
     g2 = self.get_graph(str(ea2))
 
     if g1 == ({}, {}) or g2 == ({}, {}):
-      Warning("Sorry, graph information is not available for one of the databases.")
+      print("Sorry, graph information is not available for one of the databases.")
       return False
 
     colours = self.compare_graphs(g1, ea1, g2, ea2)
@@ -1049,7 +1051,7 @@ class CIDABinDiff(diaphora.CBinDiff):
       action_name, action_desc, action_handler, hotkey = item
       self.register_menu_action(action_name, action_desc, action_handler, hotkey)
 
-    Warning("""AUTOHIDE REGISTRY\nIf you close one tab you can always re-open it by pressing F3
+    print("""AUTOHIDE REGISTRY\nIf you close one tab you can always re-open it by pressing F3
 or selecting Edit -> Plugins -> Diaphora - Show results""")
 
   # Ripped out from REgoogle
@@ -1514,14 +1516,14 @@ or selecting Edit -> Plugins -> Diaphora - Show results""")
       cur.execute(sql)
       rows = cur.fetchall()
       if len(rows) != 1:
-        Warning("Malformed results database!")
+        print("Malformed results database!")
         return False
 
       row = rows[0]
       version = row["version"]
       if version != diaphora.VERSION_VALUE:
         msg = "The version of the diff results is %s and current version is %s, there can be some incompatibilities."
-        Warning(msg % (version, diaphora.VERSION_VALUE))
+        print(msg % (version, diaphora.VERSION_VALUE))
 
       main_db = row["main_db"]
       diff_db = row["diff_db"]
@@ -1609,22 +1611,22 @@ def _diff_or_export(use_ui, **options):
 
   total_functions = len(list(Functions()))
   if False:
-    Warning("No IDA database opened or no function in the database.\nPlease open an IDA database and create some functions before running this script.")
+    print("No IDA database opened or no function in the database.\nPlease open an IDA database and create some functions before running this script.")
     return
 
   opts = BinDiffOptions(**options)
  
   if opts.file_out == opts.file_in:
-    Warning("Both databases are the same file!")
+    print("Both databases are the same file!")
     return
   elif opts.file_out == "" or len(opts.file_out) < 5:
-    Warning("No output database selected or invalid filename. Please select a database file.")
+    print("No output database selected or invalid filename. Please select a database file.")
     return
   elif is_r2_file(opts.file_in) or is_r2_file(opts.file_out):
-    Warning("TODO: this will run r2 with this script and no file opened, Support for projects must be done too.")
+    print("TODO: this will run r2 with this script and no file opened, Support for projects must be done too.")
     return
   elif is_ida_file(opts.file_in) or is_ida_file(opts.file_out):
-    Warning("Hahhahahh, no seriously, what are you trying to do?")
+    print("Hahhahahh, no seriously, what are you trying to do?")
     return
 
   export = True
@@ -1701,7 +1703,7 @@ class BinDiffOptions:
     # 'big' databases (>20k functions)
     self.relax = kwargs.get('relax', total_functions > 20000)
     if self.relax:
-      Warning(MSG_RELAXED_RATIO_ENABLED)
+      print(MSG_RELAXED_RATIO_ENABLED)
     self.unreliable = kwargs.get('unreliable', False)
     self.slow = kwargs.get('slow', False)
     self.experimental = kwargs.get('experimental', False)
@@ -1848,8 +1850,9 @@ def remove_file(filename):
 def main():
   global r2
   filename = os.getenv("R2_FILE")
+  in_r2 = os.getenv("R2PIPE_IN") is not None
     
-  if os.getenv("R2PIPE_IN") is not None:
+  if in_r2:
     r2 = r2pipe.open()
     filename = r2.cmd("o~[4]")
   else:
@@ -1863,9 +1866,14 @@ def main():
   r2.cmd("e scr.color=false")
   r2.cmd("e io.cache=true")
   r2.cmd("aeim")
-  #r2.cmd("aaa")
-  r2.cmd("aab")
-  r2.cmd("aac")
+  r2.cmd("e anal.hasnext=true")
+  if in_r2:
+    print "Running from inside r2. Preserving the analysis information"
+  else:
+    #r2.cmd("aaa")
+    r2.cmd("aab")
+    #r2.cmd("aac")
+
   file_out = "output.sqlite"
   if bool(os.getenv("DIAPHORA_AUTO")):
     file_out = os.getenv("DIAPHORA_EXPORT_FILE")
@@ -1874,10 +1882,10 @@ def main():
 
   if os.path.exists(file_out):
     g_bindiff = None
-    remove_file(file_out)
-    #bd = CIDABinDiff(file_out)
-    #bd.use_decompiler_always = bool(os.getenv("DIAPHORA_USE_DECOMPILER"))
-    #bd.export()
+    if input("Remove %s ?"%(file_out))[0].lower() == 'y':
+      os.unlink(file_out)
+      _diff_or_export(True)
+    print("Please remove %s and run again"%(file_out))
   else:
     _diff_or_export(True)
   r2.quit()
