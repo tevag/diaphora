@@ -1860,6 +1860,7 @@ def main():
   # perform analysis
   r2.cmd("e asm.flags=false")
   r2.cmd("e asm.bytes=false")
+  r2.cmd("e scr.color=false")
   r2.cmd("e io.cache=true")
   r2.cmd("aeim")
   #r2.cmd("aaa")
