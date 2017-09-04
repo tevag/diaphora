@@ -1,3 +1,4 @@
+#!/usr/bin/python
 """
 Diaphora, a diffing plugin for Radare2
 Copyright (c) 2017, Sergi Alvarez
