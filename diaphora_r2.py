@@ -1861,7 +1861,12 @@ def main():
     filename = r2.cmd("o~[4]")
   else:
     if filename is None:
-      filename = sys.argv[1]
+      if len(sys.argv) > 1:
+        filename = sys.argv[1]
+      else:
+        print "Usage: diaphora-r2 [bin]"
+        print "Usage: r2 -qAc'!diaphora-r2' /bin/ls"
+        sys.exit(1)
     r2 = r2pipe.open(filename)
   
   # perform analysis
