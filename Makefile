@@ -13,6 +13,7 @@ clean:
 	rm -f output.sqlite*
 
 install:
+	mkdir -p "$(BINDIR)"
 	ln -fs $(PWD)/diaphora.py $(BINDIR)/diaphora
 	ln -fs $(PWD)/diaphora_r2.py $(BINDIR)/diaphora-r2
 
