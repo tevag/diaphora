@@ -1856,6 +1856,7 @@ def main():
   in_r2 = os.getenv("R2PIPE_IN") is not None
     
   if in_r2:
+    print "Running from inside r2. Preserving the analysis information"
     r2 = r2pipe.open()
     # TODO: #!pipe doesnt setups the R2_ env
     filename = r2.cmd("o~[4]")
@@ -1868,6 +1869,9 @@ def main():
         print "Usage: r2 -qAc'!diaphora-r2' /bin/ls"
         sys.exit(1)
     r2 = r2pipe.open(filename)
+    #r2.cmd("aaa")
+    r2.cmd("aab")
+    #r2.cmd("aac")
   
   # perform analysis
   r2.cmd("e asm.flags=false")
@@ -1876,12 +1880,6 @@ def main():
   r2.cmd("e io.cache=true")
   r2.cmd("aeim")
   r2.cmd("e anal.hasnext=true")
-  if in_r2:
-    print "Running from inside r2. Preserving the analysis information"
-  else:
-    #r2.cmd("aaa")
-    r2.cmd("aab")
-    #r2.cmd("aac")
 
   file_out = "output.sqlite"
   # TODO parse arguments
